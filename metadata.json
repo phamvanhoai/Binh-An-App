@@ -1,0 +1,6 @@
+{
+  "name": "Bình An",
+  "description": "Ứng dụng tưởng niệm, cầu nguyện và viết thư tương lai mang tính chất bình an.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
