@@ -42,6 +42,19 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
 
+    // Immersive Interactive Metrics & Features
+    private val _savedMessageIds = MutableStateFlow<Set<String>>(sessionManager.getSavedMessages())
+    val savedMessageIds: StateFlow<Set<String>> = _savedMessageIds.asStateFlow()
+
+    private val _streakCount = MutableStateFlow(sessionManager.getStreakCount())
+    val streakCount: StateFlow<Int> = _streakCount.asStateFlow()
+
+    private val _coPrayCount = MutableStateFlow(sessionManager.getCoPrayCount())
+    val coPrayCount: StateFlow<Int> = _coPrayCount.asStateFlow()
+
+    private val _sentPrayersCount = MutableStateFlow(sessionManager.getSentPrayersCount())
+    val sentPrayersCount: StateFlow<Int> = _sentPrayersCount.asStateFlow()
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
@@ -600,5 +613,44 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 _isLoading.value = false
             }
         }
+    }
+
+    // Peaceful Interactive Utility Functions
+    fun saveMessage(id: String) {
+        sessionManager.saveMessageId(id)
+        _savedMessageIds.value = sessionManager.getSavedMessages()
+        _successMessage.value = "Đã lưu thông điệp hôm nay"
+    }
+
+    fun unsaveMessage(id: String) {
+        sessionManager.removeSavedMessageId(id)
+        _savedMessageIds.value = sessionManager.getSavedMessages()
+        _successMessage.value = "Đã bỏ lưu thông điệp"
+    }
+
+    fun isMessageSaved(id: String): Boolean {
+        return _savedMessageIds.value.contains(id)
+    }
+
+    fun incrementCoPray() {
+        sessionManager.incrementCoPrayCount()
+        _coPrayCount.value = sessionManager.getCoPrayCount()
+    }
+
+    fun incrementStreak() {
+        sessionManager.incrementStreak()
+        _streakCount.value = sessionManager.getStreakCount()
+    }
+
+    fun incrementSentPrayers() {
+        sessionManager.incrementSentPrayersCount()
+        _sentPrayersCount.value = sessionManager.getSentPrayersCount()
+    }
+
+    fun updateAvatar(avatarUrl: String) {
+        val updated = _currentUser.value?.copy(avatar = avatarUrl)
+        _currentUser.value = updated
+        sessionManager.updateAvatar(avatarUrl)
+        _successMessage.value = "Đã thay đổi pháp danh & ảnh đại diện!"
     }
 }

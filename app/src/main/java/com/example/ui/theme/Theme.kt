@@ -10,56 +10,34 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme =
+private val ActiveColorScheme =
   darkColorScheme(
-    primary = DarkPrimary,
-    onPrimary = DarkOnPrimary,
-    secondary = EarthSecondaryContainer,
-    onSecondary = EarthOnSecondaryContainer,
-    tertiary = GoldTertiary,
-    background = DarkBackground,
-    surface = DarkSurface,
-    onBackground = DarkOnBackground,
-    onSurface = DarkOnSurface
-  )
-
-private val LightColorScheme =
-  lightColorScheme(
-    primary = SagePrimary,
-    onPrimary = SageOnPrimary,
-    primaryContainer = SagePrimaryContainer,
-    onPrimaryContainer = SageOnPrimaryContainer,
-    secondary = EarthSecondary,
-    onSecondary = EarthOnSecondary,
-    secondaryContainer = EarthSecondaryContainer,
-    onSecondaryContainer = EarthOnSecondaryContainer,
-    tertiary = GoldTertiary,
-    onTertiary = GoldOnTertiary,
-    tertiaryContainer = GoldTertiaryContainer,
-    onTertiaryContainer = GoldOnTertiaryContainer,
-    background = CozyBackground,
-    surface = CozySurface,
-    onBackground = CozyOnBackground,
-    onSurface = CozyOnSurface
+    primary = BinhAnPrimary,
+    onPrimary = BinhAnBackground,
+    primaryContainer = BinhAnSurfaceVariant,
+    onPrimaryContainer = BinhAnPrimary,
+    secondary = BinhAnSecondary,
+    onSecondary = BinhAnBackground,
+    secondaryContainer = BinhAnSurfaceVariant,
+    onSecondaryContainer = BinhAnSecondary,
+    background = BinhAnBackground,
+    surface = BinhAnSurface,
+    onBackground = BinhAnOnBackground,
+    onSurface = BinhAnOnSurface,
+    onSurfaceVariant = BinhAnOnSurfaceVariant,
+    error = BinhAnError,
+    onError = BinhAnOnBackground
   )
 
 @Composable
 fun MyApplicationTheme(
-  darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
+  darkTheme: Boolean = true, // Force dark theme for peaceful night look
+  dynamicColor: Boolean = false, // Disable dynamic colors to preserve our hand-crafted gold/amber/deep-blue design
   content: @Composable () -> Unit,
 ) {
-  val colorScheme =
-    when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
-    }
-
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  MaterialTheme(
+    colorScheme = ActiveColorScheme,
+    typography = Typography,
+    content = content
+  )
 }

@@ -82,11 +82,13 @@ fun MainAppLayout(viewModel: BinhAnViewModel) {
 
   val menuItems = listOf(
     NavigationTabItem("Trang Chủ", Icons.Default.Home, "home_tab"),
-    NavigationTabItem("Tưởng Niệm", Icons.Default.Favorite, "memorials_tab"),
-    NavigationTabItem("Cầu Nguyện", Icons.Default.Spa, "prayers_tab"),
-    NavigationTabItem("Tĩnh Niệm", Icons.Default.MenuBook, "gratitude_tab"),
+    NavigationTabItem("Thông Điệp", Icons.Default.MenuBook, "today_message_tab"),
+    NavigationTabItem("Gửi Bình An", Icons.Default.Spa, "ritual_tab"),
+    NavigationTabItem("Cộng Đồng", Icons.Default.People, "community_tab"),
     NavigationTabItem("Cá Nhân", Icons.Default.Person, "profile_tab")
   )
+
+  var preselectedRitualType by remember { mutableStateOf<String?>(null) }
 
   Scaffold(
     snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -137,7 +139,12 @@ fun MainAppLayout(viewModel: BinhAnViewModel) {
             icon = { Icon(item.icon, contentDescription = item.label) },
             label = { Text(item.label, fontSize = 10.sp) },
             selected = currentTab == index,
-            onClick = { currentTab = index },
+            onClick = {
+              if (index != 2) {
+                preselectedRitualType = null
+              }
+              currentTab = index
+            },
             modifier = Modifier.testTag(item.tag)
           )
         }
@@ -152,12 +159,25 @@ fun MainAppLayout(viewModel: BinhAnViewModel) {
       when (currentTab) {
         0 -> HomeScreen(
           viewModel = viewModel,
-          onNavigateToMemorials = { currentTab = 1 },
-          onNavigateToPrayers = { currentTab = 2 }
+          onQuickAction = { ritual ->
+            preselectedRitualType = ritual
+            currentTab = 2
+          },
+          onNavigateToTab = { index ->
+            currentTab = index
+          }
         )
-        1 -> MemorialsScreen(viewModel = viewModel)
-        2 -> PrayersScreen(viewModel = viewModel)
-        3 -> GratitudeLettersScreen(viewModel = viewModel)
+        1 -> TodayMessageScreen(viewModel = viewModel)
+        2 -> {
+          RitualScreen(
+            viewModel = viewModel,
+            onNavigateToCommunity = {
+              currentTab = 3
+            },
+            preselectedRitual = preselectedRitualType
+          )
+        }
+        3 -> CommunityScreen(viewModel = viewModel)
         4 -> ProfileScreen(viewModel = viewModel)
       }
     }

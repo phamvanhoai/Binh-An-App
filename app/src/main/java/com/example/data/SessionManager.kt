@@ -77,6 +77,54 @@ class SessionManager(context: Context) {
         )
     }
 
+    // Interactive Stats & Local Storage
+    fun getSavedMessages(): Set<String> {
+        return prefs.getStringSet("saved_message_ids", emptySet()) ?: emptySet()
+    }
+
+    fun saveMessageId(id: String) {
+        val current = getSavedMessages().toMutableSet()
+        current.add(id)
+        prefs.edit().putStringSet("saved_message_ids", current).apply()
+    }
+
+    fun removeSavedMessageId(id: String) {
+        val current = getSavedMessages().toMutableSet()
+        current.remove(id)
+        prefs.edit().putStringSet("saved_message_ids", current).apply()
+    }
+
+    fun isMessageSaved(id: String): Boolean {
+        return getSavedMessages().contains(id)
+    }
+
+    fun getStreakCount(): Int {
+        return prefs.getInt("streak_count", 3) // Defaults to a peaceful 3-day starter streak
+    }
+
+    fun incrementStreak() {
+        val current = getStreakCount()
+        prefs.edit().putInt("streak_count", current + 1).apply()
+    }
+
+    fun getCoPrayCount(): Int {
+        return prefs.getInt("copray_count", 18) // Defaults to beautiful 18 co-prayers
+    }
+
+    fun incrementCoPrayCount() {
+        val current = getCoPrayCount()
+        prefs.edit().putInt("copray_count", current + 1).apply()
+    }
+
+    fun getSentPrayersCount(): Int {
+        return prefs.getInt("sent_prayers_count", 5) // Defaults to 5 sent wishes starter
+    }
+
+    fun incrementSentPrayersCount() {
+        val current = getSentPrayersCount()
+        prefs.edit().putInt("sent_prayers_count", current + 1).apply()
+    }
+
     fun clearSession() {
         prefs.edit().clear().apply()
     }
