@@ -394,8 +394,8 @@ fun HomeScreen(
             }
         } else {
             items(prayers.take(3), key = { it.id }) { prayer ->
-                val parts = prayer.title.split("|")
-                val recipient = if (parts.size >= 3) parts[0] else prayer.title
+                val parts = prayer.title?.split("|") ?: emptyList()
+                val recipient = if (parts.size >= 3) parts[0] else prayer.title ?: ""
                 val rType = if (parts.size >= 3) parts[1] else "Nến"
 
                 Card(
@@ -459,7 +459,7 @@ fun HomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Bởi: ${prayer.author ?: "Bạn Hữu"}",
+                                text = "Bởi: ${prayer.user?.displayName ?: "Bạn Hữu"}",
                                 fontSize = 10.sp,
                                 color = MaterialTheme.colorScheme.secondary
                             )

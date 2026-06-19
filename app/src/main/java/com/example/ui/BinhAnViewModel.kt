@@ -285,7 +285,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val response = apiService.getMemorials()
-                _memorials.value = response
+                _memorials.value = response.data
             } catch (e: Exception) {
                 // Fallback local simulation if online table empty
                 if (_memorials.value.isEmpty()) {
@@ -332,7 +332,8 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
     fun lightCandle(id: String) {
         viewModelScope.launch {
             try {
-                val updated = apiService.lightCandle(id)
+                val response = apiService.lightCandle(id)
+                val updated = response.data
                 _memorials.value = _memorials.value.map { if (it.id == id) updated else it }
                 _successMessage.value = "🕯️ Bạn đã thắp một ngọn nến bình an!"
             } catch (e: Exception) {
@@ -365,12 +366,28 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val response = apiService.getPrayers()
-                _prayers.value = response
+                _prayers.value = response.data
             } catch (e: Exception) {
                 if (_prayers.value.isEmpty()) {
                     _prayers.value = listOf(
-                        Prayer("p1", "Cầu nguyện cho thế giới hòa bình", "Cầu chúc mọi linh hồn đều tìm thấy vạt cỏ thảo nguyên yên ấm.", "Phúc An", null, "19/06/2026", 128, null, false),
-                        Prayer("p2", "Cầu cho gia đình bình an", "Mong cha mẹ khỏe mạnh, tai qua nạn khỏi, một đời trôi qua trong an lành và dịu êm.", "Khánh Ly", null, "18/06/2026", 45, null, true)
+                        Prayer(
+                            id = "p1",
+                            title = "Cầu nguyện cho thế giới hòa bình",
+                            content = "Cầu chúc mọi linh hồn đều tìm thấy vạt cỏ thảo nguyên yên ấm.",
+                            type = "Phúc An",
+                            createdAt = "19/06/2026",
+                            prayCount = 128,
+                            isReacted = false
+                        ),
+                        Prayer(
+                            id = "p2",
+                            title = "Cầu cho gia đình bình an",
+                            content = "Mong cha mẹ khỏe mạnh, tai qua nạn khỏi, một đời trôi qua trong an lành và dịu êm.",
+                            type = "Khánh Ly",
+                            createdAt = "18/06/2026",
+                            prayCount = 45,
+                            isReacted = true
+                        )
                     )
                 }
             }
@@ -381,7 +398,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                val response = apiService.createPrayer(PrayerCreateRequest(title, content))
+                apiService.createPrayer(PrayerCreateRequest(title, content))
                 _successMessage.value = "Đã phát lời nguyện ước"
                 fetchPrayers()
                 onFinished(true)
@@ -390,7 +407,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     id = "temp_${System.currentTimeMillis()}",
                     title = title,
                     content = content,
-                    author = currentUser.value?.displayName ?: "Người dùng ẩn danh",
+                    user = currentUser.value,
                     createdAt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()),
                     prayCount = 1,
                     isReacted = true
@@ -410,11 +427,12 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 val item = _prayers.value.firstOrNull { it.id == id } ?: return@launch
                 val isCurrentlyReacted = item.isReacted ?: false
                 
-                val updated = if (isCurrentlyReacted) {
+                val response = if (isCurrentlyReacted) {
                     apiService.removeReaction(id)
                 } else {
                     apiService.addReaction(id)
                 }
+                val updated = response.data
                 
                 _prayers.value = _prayers.value.map { if (it.id == id) updated else it }
             } catch (e: Exception) {
@@ -452,7 +470,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val response = apiService.getGratitudeEntries()
-                _gratitudeEntries.value = response
+                _gratitudeEntries.value = response.data
             } catch (e: Exception) {
                 if (_gratitudeEntries.value.isEmpty()) {
                     _gratitudeEntries.value = listOf(
@@ -507,7 +525,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val response = apiService.getFutureLetters()
-                _futureLetters.value = response
+                _futureLetters.value = response.data
             } catch (e: Exception) {
                 if (_futureLetters.value.isEmpty()) {
                     _futureLetters.value = listOf(
@@ -563,7 +581,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val response = apiService.getNotifications()
-                _notifications.value = response
+                _notifications.value = response.data
             } catch (e: Exception) {
                 if (_notifications.value.isEmpty()) {
                     _notifications.value = listOf(

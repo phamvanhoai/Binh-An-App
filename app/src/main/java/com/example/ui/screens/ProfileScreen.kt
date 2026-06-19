@@ -77,7 +77,7 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
     // Filter my wishes (either generated locally or matching currentUser name/author)
     val myPrayers = remember(prayers, currentUser) {
         prayers.filter {
-            it.author == currentUser?.displayName || currentUser?.name?.let { n -> it.author == n } ?: false || it.id.startsWith("temp_")
+            it.user?.id == currentUser?.id || it.id.startsWith("temp_")
         }
     }
 
@@ -341,8 +341,8 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
                 }
             } else {
                 items(myPrayers) { prayer ->
-                    val parts = prayer.title.split("|")
-                    val recipient = if (parts.size >= 3) parts[0] else prayer.title
+                    val parts = prayer.title?.split("|") ?: emptyList()
+                    val recipient = if (parts.size >= 3) parts[0] else prayer.title ?: ""
                     val rType = if (parts.size >= 3) parts[1] else "Nến"
 
                     Card(

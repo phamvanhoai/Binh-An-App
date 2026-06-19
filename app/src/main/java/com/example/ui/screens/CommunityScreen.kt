@@ -261,7 +261,7 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                                         text = "Tâm nguyện của: ${
                                             if (privacy == "Riêng tư") "Bản thân"
                                             else if (privacy == "Công khai ẩn danh") "Người Bạn Bình An"
-                                            else prayer.author ?: "Bạn Hữu"
+                                            else prayer.user?.displayName ?: "Bạn Hữu"
                                         }",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
@@ -386,7 +386,7 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                             text = "Bởi: ${
                                 if (privacy == "Riêng tư") "Chỉ mình bạn"
                                 else if (privacy == "Công khai ẩn danh") "Bạn Hữu Ẩn Danh"
-                                else activePrayer.author ?: "Pháp Hữu"
+                                else activePrayer.user?.displayName ?: "Pháp Hữu"
                             } • ${activePrayer.createdAt ?: "Hôm nay"}",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.secondary,
@@ -518,18 +518,19 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
 }
 
 // Global decoders to decode recipient, ritualType, privacy from compound titles
-fun decodePrayerTitle(title: String): Triple<String, String, String> {
-    val parts = title.split("|")
+fun decodePrayerTitle(title: String?): Triple<String, String, String> {
+    val safeTitle = title ?: ""
+    val parts = safeTitle.split("|")
     return if (parts.size >= 3) {
         Triple(parts[0], parts[1], parts[2])
     } else {
         // Safe fallbacks depending on name guessing
         val rType = when {
-            title.contains("hương", ignoreCase = true) -> "Hương"
-            title.contains("đăng", ignoreCase = true) || title.contains("hoa đăng", ignoreCase = true) -> "Hoa đăng"
+            safeTitle.contains("hương", ignoreCase = true) -> "Hương"
+            safeTitle.contains("đăng", ignoreCase = true) || safeTitle.contains("hoa đăng", ignoreCase = true) -> "Hoa đăng"
             else -> "Nến"
         }
-        Triple(title.ifEmpty { "Gia đình" }, rType, "Công khai ẩn danh")
+        Triple(safeTitle.ifEmpty { "Gia đình" }, rType, "Công khai ẩn danh")
     }
 }
 
