@@ -6,7 +6,7 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class User(
     @Json(name = "_id") val id: String? = null,
-    val idStr: String? = null, // fallback
+    @Json(name = "id") val idStr: String? = null,
     val email: String,
     val name: String? = null,
     val avatar: String? = null,
@@ -20,7 +20,38 @@ data class AuthResponse(
     val success: Boolean? = null,
     val message: String? = null,
     val token: String? = null,
+    val user: User? = null,
+    val data: AuthData? = null,
+    val error: ApiError? = null
+) {
+    val authToken: String?
+        get() = token
+            ?: data?.token
+            ?: data?.accessToken
+            ?: data?.session?.accessToken
+
+    val authUser: User?
+        get() = user ?: data?.user ?: data?.session?.user
+}
+
+@JsonClass(generateAdapter = true)
+data class AuthData(
+    val token: String? = null,
+    @Json(name = "access_token") val accessToken: String? = null,
+    val user: User? = null,
+    val session: AuthSession? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class AuthSession(
+    @Json(name = "access_token") val accessToken: String? = null,
     val user: User? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class ApiError(
+    val code: String? = null,
+    val message: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -100,10 +131,11 @@ data class PrayerReactions(
 
 @JsonClass(generateAdapter = true)
 data class Prayer(
-    @Json(name = "_id") val id: String,
+    val id: String,
     val title: String? = null,
     val content: String,
     val type: String? = null,
+    val visibility: String? = null,
     @Json(name = "allow_reactions") val allowReactions: Boolean? = null,
     @Json(name = "created_at") val createdAt: String? = null,
     val reactions: PrayerReactions? = null,
@@ -126,10 +158,10 @@ data class PrayerDetailResponse(
 
 @JsonClass(generateAdapter = true)
 data class PrayerCreateRequest(
-    val title: String? = null,
     val content: String,
-    val type: String = "peace",
-    val isPublic: Boolean = true
+    val type: String,
+    val visibility: String,
+    @Json(name = "allow_reactions") val allowReactions: Boolean = true
 )
 
 @JsonClass(generateAdapter = true)

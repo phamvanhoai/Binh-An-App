@@ -394,9 +394,7 @@ fun HomeScreen(
             }
         } else {
             items(prayers.take(3), key = { it.id }) { prayer ->
-                val parts = prayer.title?.split("|") ?: emptyList()
-                val recipient = if (parts.size >= 3) parts[0] else prayer.title ?: ""
-                val rType = if (parts.size >= 3) parts[1] else "Nến"
+                val prayerType = prayer.type ?: "peace"
 
                 Card(
                     modifier = Modifier
@@ -415,16 +413,12 @@ fun HomeScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = when (rType) {
-                                        "Nến" -> "🕯️"
-                                        "Hương" -> "💨"
-                                        else -> "🪷"
-                                    },
+                                    text = prayerTypeIcon(prayerType),
                                     fontSize = 16.sp
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Cho: $recipient",
+                                    text = prayerTypeLabel(prayerType),
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -487,7 +481,7 @@ fun HomeScreen(
                                     modifier = Modifier.size(10.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Đồng nguyện (${prayer.prayCount ?: 0})", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text("Đồng nguyện (${prayer.reactions?.pray ?: 0})", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }

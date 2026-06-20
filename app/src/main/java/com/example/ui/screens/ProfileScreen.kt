@@ -341,9 +341,7 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
                 }
             } else {
                 items(myPrayers) { prayer ->
-                    val parts = prayer.title?.split("|") ?: emptyList()
-                    val recipient = if (parts.size >= 3) parts[0] else prayer.title ?: ""
-                    val rType = if (parts.size >= 3) parts[1] else "Nến"
+                    val prayerType = prayer.type ?: "peace"
 
                     Card(
                         modifier = Modifier
@@ -359,17 +357,13 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = when (rType) {
-                                    "Nến" -> "🕯️"
-                                    "Hương" -> "💨"
-                                    else -> "🪷"
-                                },
+                                text = prayerTypeIcon(prayerType),
                                 fontSize = 24.sp
                             )
                             Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = "Đến: $recipient",
+                                    text = prayerTypeLabel(prayerType),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.primary

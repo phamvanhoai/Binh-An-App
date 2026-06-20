@@ -44,13 +44,8 @@ fun RitualScreen(
     var selectedRitual by remember { mutableStateOf(preselectedRitual ?: "Nến") }
     var isSubmitted by remember { mutableStateOf(false) }
 
-    // Form states
-    var recipientType by remember { mutableStateOf("Cho bản thân") }
-    var customRecipientName by remember { mutableStateOf("") }
     var prayerContent by remember { mutableStateOf("") }
-    var privacyMode by remember { mutableStateOf("Công khai ẩn danh") }
-
-    val actualRecipient = if (recipientType == "Khác") customRecipientName else recipientType
+    var privacyMode by remember { mutableStateOf("public_anonymous") }
 
     // Scroll state
     val scrollState = rememberScrollState()
@@ -58,12 +53,10 @@ fun RitualScreen(
     if (isSubmitted) {
         RitualSuccessLayout(
             ritualType = selectedRitual,
-            recipient = actualRecipient,
             content = prayerContent,
             onClose = {
                 isSubmitted = false
                 prayerContent = ""
-                customRecipientName = ""
             },
             onGotoCommunity = onNavigateToCommunity
         )
@@ -196,63 +189,9 @@ fun RitualScreen(
                     modifier = Modifier.padding(20.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
-                    // Recipient Section
-                    Text(
-                        text = "1. Gửi bình an đến ai?",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Cho bản thân", "Cho người thân", "Cho cộng đồng", "Khác").forEach { opt ->
-                            val isChosen = recipientType == opt
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (isChosen) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-                                        else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                    )
-                                    .clickable { recipientType = opt }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = opt,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (isChosen) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isChosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
-
-                    if (recipientType == "Khác") {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = customRecipientName,
-                            onValueChange = { customRecipientName = it },
-                            placeholder = { Text("Nhập tên người nhận...", fontSize = 14.sp) },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                            ),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().height(52.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
                     // Content Section
                     Text(
-                        text = "2. Lời nguyện ước của bạn",
+                        text = "1. Lời bình an của bạn",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp
@@ -284,7 +223,7 @@ fun RitualScreen(
 
                     // Privacy Section
                     Text(
-                        text = "3. Chế độ riêng tư",
+                        text = "2. Chế độ hiển thị",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp
@@ -292,29 +231,29 @@ fun RitualScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         listOf(
-                            "Công khai ẩn danh" to "Mọi người sẽ thấy lời nguyện cầu của bạn dưới dạng ẩn danh.",
-                            "Công khai tên" to "Lời nguyện sẽ hiển thị cùng với pháp danh của bạn.",
-                            "Riêng tư" to "Chỉ lưu giữ để xem riêng tư trong nhật ký của bản thân."
-                        ).forEach { (mode, desc) ->
-                            val isSel = privacyMode == mode
+                            Triple("public_anonymous", "Công khai ẩn danh", "Mọi người có thể xem nhưng không hiển thị tên của bạn."),
+                            Triple("public_named", "Công khai tên", "Lời bình an hiển thị cùng tên tài khoản của bạn."),
+                            Triple("private", "Riêng tư", "Chỉ bạn có thể xem lời bình an này.")
+                        ).forEach { (value, label, desc) ->
+                            val isSel = privacyMode == value
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(if (isSel) MaterialTheme.colorScheme.background.copy(alpha = 0.4f) else Color.Transparent)
-                                    .clickable { privacyMode = mode }
+                                    .clickable { privacyMode = value }
                                     .padding(horizontal = 8.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(
                                     selected = isSel,
-                                    onClick = { privacyMode = mode },
+                                    onClick = { privacyMode = value },
                                     colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
                                     Text(
-                                        text = mode,
+                                        text = label,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = if (isSel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
@@ -335,9 +274,16 @@ fun RitualScreen(
                     Button(
                         onClick = {
                             if (prayerContent.isNotBlank()) {
-                                // Encode metadata in Title: recipient|ritualType|privacy
-                                val encodedTitle = "$actualRecipient|$selectedRitual|$privacyMode"
-                                viewModel.createPrayer(encodedTitle, prayerContent) { success ->
+                                val apiType = when (selectedRitual) {
+                                    "Hương" -> "memorial"
+                                    "Hoa đăng" -> "wish"
+                                    else -> "peace"
+                                }
+                                viewModel.createPrayer(
+                                    content = prayerContent.trim(),
+                                    type = apiType,
+                                    visibility = privacyMode
+                                ) { success ->
                                     if (success) {
                                         viewModel.incrementStreak()
                                         viewModel.incrementSentPrayers()
@@ -346,7 +292,7 @@ fun RitualScreen(
                                 }
                             }
                         },
-                        enabled = prayerContent.isNotBlank() && (recipientType != "Khác" || customRecipientName.isNotBlank()),
+                        enabled = prayerContent.isNotBlank(),
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -380,7 +326,6 @@ fun RitualScreen(
 @Composable
 fun RitualSuccessLayout(
     ritualType: String,
-    recipient: String,
     content: String,
     onClose: () -> Unit,
     onGotoCommunity: () -> Unit
@@ -510,11 +455,6 @@ fun RitualSuccessLayout(
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                Text("Gửi đến:", fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
-                                Text(recipient, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))

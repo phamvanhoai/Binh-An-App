@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.json.JSONObject
+import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -75,6 +77,25 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
     fun clearError() { _errorMessage.value = null }
     fun clearSuccess() { _successMessage.value = null }
 
+    private fun authErrorMessage(error: Throwable): String {
+        if (error !is HttpException) {
+            return "Lỗi kết nối máy chủ: ${error.localizedMessage ?: "Vui lòng thử lại"}"
+        }
+
+        val serverMessage = runCatching {
+            val rawBody = error.response()?.errorBody()?.string().orEmpty()
+            val body = JSONObject(rawBody)
+            body.optJSONObject("error")?.optString("message")
+                ?.takeIf { it.isNotBlank() }
+                ?: body.optString("message").takeIf { it.isNotBlank() }
+        }.getOrNull()
+
+        return when (serverMessage) {
+            "Invalid login credentials" -> "Email hoặc mật khẩu không đúng."
+            else -> serverMessage ?: "Đăng nhập không thành công (HTTP ${error.code()})."
+        }
+    }
+
     fun fetchTodayMessage() {
         viewModelScope.launch {
             try {
@@ -109,19 +130,23 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _errorMessage.value = null
             try {
                 val response = apiService.login(LoginRequest(email, password))
-                if (response.token != null) {
-                    sessionManager.saveSession(response.token, response.user)
-                    _currentUser.value = response.user ?: sessionManager.getUser()
+                val token = response.authToken
+                val user = response.authUser
+                if (token != null) {
+                    sessionManager.saveSession(token, user)
+                    _currentUser.value = user ?: sessionManager.getUser()
                     _isLoggedIn.value = true
                     _successMessage.value = "Đăng nhập thành công!"
                     refreshUserData()
                     onFinished(true)
                 } else {
-                    _errorMessage.value = response.message ?: "Email hoặc mật khẩu sai."
+                    _errorMessage.value = response.error?.message
+                        ?: response.message
+                        ?: "Máy chủ không trả về phiên đăng nhập."
                     onFinished(false)
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Lỗi kết nối máy chủ: ${e.localizedMessage ?: "Vui lòng thử lại"}"
+                _errorMessage.value = authErrorMessage(e)
                 onFinished(false)
             } finally {
                 _isLoading.value = false
@@ -150,9 +175,11 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _errorMessage.value = null
             try {
                 val response = apiService.register(RegisterRequest(email, name, password))
-                if (response.token != null) {
-                    sessionManager.saveSession(response.token, response.user)
-                    _currentUser.value = response.user ?: sessionManager.getUser()
+                val token = response.authToken
+                val user = response.authUser
+                if (token != null) {
+                    sessionManager.saveSession(token, user)
+                    _currentUser.value = user ?: sessionManager.getUser()
                     _isLoggedIn.value = true
                     _successMessage.value = "Đăng ký thành công!"
                     refreshUserData()
@@ -178,9 +205,11 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 // First attempt: try to login
                 val loginResponse = apiService.login(LoginRequest(email, googleDummyPassword))
-                if (loginResponse.token != null) {
-                    sessionManager.saveSession(loginResponse.token, loginResponse.user)
-                    _currentUser.value = loginResponse.user ?: sessionManager.getUser()
+                val token = loginResponse.authToken
+                val user = loginResponse.authUser
+                if (token != null) {
+                    sessionManager.saveSession(token, user)
+                    _currentUser.value = user ?: sessionManager.getUser()
                     _isLoggedIn.value = true
                     _successMessage.value = "Đăng nhập bằng tài khoản Google thành công!"
                     refreshUserData()
@@ -201,9 +230,11 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
     private suspend fun registerWithGoogle(email: String, displayName: String, secretPass: String, onFinished: (Boolean) -> Unit) {
         try {
             val regResponse = apiService.register(RegisterRequest(email, displayName, secretPass))
-            if (regResponse.token != null) {
-                sessionManager.saveSession(regResponse.token, regResponse.user)
-                _currentUser.value = regResponse.user ?: sessionManager.getUser()
+            val token = regResponse.authToken
+            val user = regResponse.authUser
+            if (token != null) {
+                sessionManager.saveSession(token, user)
+                _currentUser.value = user ?: sessionManager.getUser()
                 _isLoggedIn.value = true
                 _successMessage.value = "Đăng nhập bằng tài khoản Google thành công!"
                 refreshUserData()
@@ -368,53 +399,34 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 val response = apiService.getPrayers()
                 _prayers.value = response.data
             } catch (e: Exception) {
-                if (_prayers.value.isEmpty()) {
-                    _prayers.value = listOf(
-                        Prayer(
-                            id = "p1",
-                            title = "Cầu nguyện cho thế giới hòa bình",
-                            content = "Cầu chúc mọi linh hồn đều tìm thấy vạt cỏ thảo nguyên yên ấm.",
-                            type = "Phúc An",
-                            createdAt = "19/06/2026",
-                            prayCount = 128,
-                            isReacted = false
-                        ),
-                        Prayer(
-                            id = "p2",
-                            title = "Cầu cho gia đình bình an",
-                            content = "Mong cha mẹ khỏe mạnh, tai qua nạn khỏi, một đời trôi qua trong an lành và dịu êm.",
-                            type = "Khánh Ly",
-                            createdAt = "18/06/2026",
-                            prayCount = 45,
-                            isReacted = true
-                        )
-                    )
-                }
+                _prayers.value = emptyList()
+                _errorMessage.value = "Không thể tải lời bình an từ máy chủ."
             }
         }
     }
 
-    fun createPrayer(title: String, content: String, onFinished: (Boolean) -> Unit = {}) {
+    fun createPrayer(
+        content: String,
+        type: String,
+        visibility: String,
+        onFinished: (Boolean) -> Unit = {}
+    ) {
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                apiService.createPrayer(PrayerCreateRequest(title, content))
+                apiService.createPrayer(
+                    PrayerCreateRequest(
+                        content = content,
+                        type = type,
+                        visibility = visibility
+                    )
+                )
                 _successMessage.value = "Đã phát lời nguyện ước"
                 fetchPrayers()
                 onFinished(true)
             } catch (e: Exception) {
-                val localPrayer = Prayer(
-                    id = "temp_${System.currentTimeMillis()}",
-                    title = title,
-                    content = content,
-                    user = currentUser.value,
-                    createdAt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()),
-                    prayCount = 1,
-                    isReacted = true
-                )
-                _prayers.value = listOf(localPrayer) + _prayers.value
-                _successMessage.value = "Đã gửi tâm nguyện cục bộ thành công!"
-                onFinished(true)
+                _errorMessage.value = authErrorMessage(e)
+                onFinished(false)
             } finally {
                 _isLoading.value = false
             }

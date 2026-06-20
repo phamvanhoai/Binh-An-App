@@ -32,20 +32,17 @@ import com.example.ui.BinhAnViewModel
 @Composable
 fun CommunityScreen(viewModel: BinhAnViewModel) {
     val prayers by viewModel.prayers.collectAsState()
-    var selectedFilter by remember { mutableStateOf("Tất cả") }
+    var selectedFilter by remember { mutableStateOf("all") }
 
     // Detail dialog state
     var selectedPrayerForDetail by remember { mutableStateOf<Prayer?>(null) }
 
     // Filter list
     val filteredPrayers = remember(prayers, selectedFilter) {
-        if (selectedFilter == "Tất cả") {
+        if (selectedFilter == "all") {
             prayers
         } else {
-            prayers.filter { prayer ->
-                val (_, rType, _) = decodePrayerTitle(prayer.title)
-                rType.equals(selectedFilter, ignoreCase = true)
-            }
+            prayers.filter { it.type == selectedFilter }
         }
     }
 
@@ -95,10 +92,10 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 listOf(
-                    "Tất cả" to "✨ Tất cả",
-                    "Nến" to "🕯️ Nến",
-                    "Hương" to "💨 Hương",
-                    "Hoa đăng" to "🪷 Hoa đăng"
+                    "all" to "Tất cả",
+                    "peace" to "Nến",
+                    "memorial" to "Hương",
+                    "wish" to "Hoa đăng"
                 ).forEach { (filterType, label) ->
                     val isSelected = selectedFilter == filterType
                     Box(
@@ -164,7 +161,7 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     items(filteredPrayers, key = { it.id }) { prayer ->
-                        val (recipient, ritualType, privacy) = decodePrayerTitle(prayer.title)
+                        val ritualType = prayer.type ?: "peace"
 
                         Card(
                             modifier = Modifier
@@ -196,11 +193,7 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                                             contentAlignment = Alignment.Center
                                         ) {
                                             Text(
-                                                text = when (ritualType) {
-                                                    "Nến" -> "🕯️"
-                                                    "Hương" -> "💨"
-                                                    else -> "🪷"
-                                                },
+                                                text = prayerTypeIcon(ritualType),
                                                 fontSize = 16.sp
                                             )
                                         }
@@ -209,17 +202,13 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
 
                                         Column {
                                             Text(
-                                                text = "Cầu bình an cho: $recipient",
+                                                text = prayerTypeLabel(ritualType),
                                                 fontWeight = FontWeight.Bold,
                                                 fontSize = 13.sp,
                                                 color = MaterialTheme.colorScheme.primary
                                             )
                                             Text(
-                                                text = when (ritualType) {
-                                                    "Nến" -> "Thắp Nến Đăng Đàn"
-                                                    "Hương" -> "Thắp Hương Đỉnh Trầm"
-                                                    else -> "Thả Hoa Đăng Tự Tại"
-                                                },
+                                                text = visibilityLabel(prayer.visibility),
                                                 fontSize = 10.sp,
                                                 color = MaterialTheme.colorScheme.secondary
                                             )
@@ -258,18 +247,14 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "Tâm nguyện của: ${
-                                            if (privacy == "Riêng tư") "Bản thân"
-                                            else if (privacy == "Công khai ẩn danh") "Người Bạn Bình An"
-                                            else prayer.user?.displayName ?: "Bạn Hữu"
-                                        }",
+                                        text = prayer.user?.displayName ?: "Ẩn danh",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
 
                                     // Co-pray interactive button
-                                    val coPrayCountStr = "${prayer.prayCount ?: 0}"
+                                    val coPrayCountStr = "${prayer.reactions?.pray ?: 0}"
                                     val isReacted = prayer.isReacted ?: false
 
                                     Row(
@@ -313,7 +298,7 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
 
     // Detail Dialog overlay modal
     selectedPrayerForDetail?.let { activePrayer ->
-        val (recipient, ritualType, privacy) = decodePrayerTitle(activePrayer.title)
+        val ritualType = activePrayer.type ?: "peace"
         val isReacted = activePrayer.isReacted ?: false
 
         AlertDialog(
@@ -367,8 +352,8 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             when (ritualType) {
-                                "Nến" -> AnimatedCandleCanvas(isLit = true)
-                                "Hương" -> AnimatedIncenseCanvas(isLit = true)
+                                "peace" -> AnimatedCandleCanvas(isLit = true)
+                                "memorial" -> AnimatedIncenseCanvas(isLit = true)
                                 else -> AnimatedLanternCanvas(isLit = true)
                             }
                         }
@@ -377,17 +362,13 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
 
                         // Wish Title details
                         Text(
-                            text = "Gửi tới: $recipient",
+                            text = prayerTypeLabel(ritualType),
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Bởi: ${
-                                if (privacy == "Riêng tư") "Chỉ mình bạn"
-                                else if (privacy == "Công khai ẩn danh") "Bạn Hữu Ẩn Danh"
-                                else activePrayer.user?.displayName ?: "Pháp Hữu"
-                            } • ${activePrayer.createdAt ?: "Hôm nay"}",
+                            text = "${activePrayer.user?.displayName ?: "Ẩn danh"} • ${activePrayer.createdAt ?: "Hôm nay"}",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.padding(top = 2.dp, bottom = 12.dp)
@@ -421,44 +402,11 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "${activePrayer.prayCount ?: 0} người đã cùng đồng nguyện",
+                                    text = "${activePrayer.reactions?.pray ?: 0} người đã cùng đồng nguyện",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            }
-                        }
-
-                        // List of co-prayed accounts
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.4f)),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(10.dp)) {
-                                Text(
-                                    text = "Đồng hiếu đồng niệm gồm:",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    // Simulated list of spiritual names
-                                    listOf("Cát Vân", "Minh Tâm", "Trí Đức", "Tuệ Lâm", "Diệu Ân").take(minOf(5, (activePrayer.prayCount ?: 2) + 1)).forEach { name ->
-                                        Box(
-                                            modifier = Modifier
-                                                .background(
-                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
-                                                    shape = RoundedCornerShape(8.dp)
-                                                )
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Text(name, fontSize = 9.sp, color = MaterialTheme.colorScheme.onSurface)
-                                        }
-                                    }
-                                }
                             }
                         }
 
@@ -517,21 +465,22 @@ fun CommunityScreen(viewModel: BinhAnViewModel) {
     }
 }
 
-// Global decoders to decode recipient, ritualType, privacy from compound titles
-fun decodePrayerTitle(title: String?): Triple<String, String, String> {
-    val safeTitle = title ?: ""
-    val parts = safeTitle.split("|")
-    return if (parts.size >= 3) {
-        Triple(parts[0], parts[1], parts[2])
-    } else {
-        // Safe fallbacks depending on name guessing
-        val rType = when {
-            safeTitle.contains("hương", ignoreCase = true) -> "Hương"
-            safeTitle.contains("đăng", ignoreCase = true) || safeTitle.contains("hoa đăng", ignoreCase = true) -> "Hoa đăng"
-            else -> "Nến"
-        }
-        Triple(safeTitle.ifEmpty { "Gia đình" }, rType, "Công khai ẩn danh")
-    }
+fun prayerTypeIcon(type: String?) = when (type) {
+    "memorial" -> "Hương"
+    "wish" -> "Hoa đăng"
+    else -> "Nến"
+}
+
+fun prayerTypeLabel(type: String?) = when (type) {
+    "memorial" -> "Dâng hương"
+    "wish" -> "Thả hoa đăng"
+    else -> "Thắp nến bình an"
+}
+
+fun visibilityLabel(visibility: String?) = when (visibility) {
+    "public_named" -> "Công khai tên"
+    "private" -> "Riêng tư"
+    else -> "Công khai ẩn danh"
 }
 
 fun Modifier.fillOuterSpaceAnimWidth() = this.fillMaxWidth()
