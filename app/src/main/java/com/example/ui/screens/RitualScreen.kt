@@ -232,7 +232,6 @@ fun RitualScreen(
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         listOf(
                             Triple("public_anonymous", "Công khai ẩn danh", "Mọi người có thể xem nhưng không hiển thị tên của bạn."),
-                            Triple("public_named", "Công khai tên", "Lời bình an hiển thị cùng tên tài khoản của bạn."),
                             Triple("private", "Riêng tư", "Chỉ bạn có thể xem lời bình an này.")
                         ).forEach { (value, label, desc) ->
                             val isSel = privacyMode == value

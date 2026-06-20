@@ -18,9 +18,9 @@ class SessionManager(context: Context) {
     fun saveSession(token: String, user: User?) {
         prefs.edit().apply {
             putString(KEY_AUTH_TOKEN, token)
-            putString(KEY_USER_ID, user?.id)
+            putString(KEY_USER_ID, user?.resolvedId)
             putString(KEY_USER_EMAIL, user?.email)
-            putString(KEY_USER_NAME, user?.name)
+            putString(KEY_USER_NAME, user?.resolvedName)
             putString(KEY_USER_BIO, user?.bio)
             putString(KEY_USER_AVATAR, user?.avatar)
             apply()

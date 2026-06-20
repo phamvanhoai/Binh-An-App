@@ -4,15 +4,36 @@ import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
 @JsonClass(generateAdapter = true)
+data class UserMetadata(
+    val name: String? = null,
+    @Json(name = "full_name") val fullName: String? = null
+)
+
+@JsonClass(generateAdapter = true)
 data class User(
     @Json(name = "_id") val id: String? = null,
     @Json(name = "id") val idStr: String? = null,
     val email: String,
     val name: String? = null,
+    @Json(name = "full_name") val fullName: String? = null,
+    @Json(name = "display_name") val displayNameField: String? = null,
+    @Json(name = "user_metadata") val userMetadata: UserMetadata? = null,
     val avatar: String? = null,
     val bio: String? = null
 ) {
-    val displayName: String get() = name ?: email.substringBefore("@")
+    val resolvedId: String? get() = id ?: idStr
+
+    val resolvedName: String?
+        get() = sequenceOf(
+            name,
+            fullName,
+            displayNameField,
+            userMetadata?.name,
+            userMetadata?.fullName
+        ).firstOrNull { !it.isNullOrBlank() }
+
+    val displayName: String
+        get() = resolvedName ?: email.substringBefore("@").takeIf { it.isNotBlank() } ?: "Bạn Hữu Bình An"
 }
 
 @JsonClass(generateAdapter = true)

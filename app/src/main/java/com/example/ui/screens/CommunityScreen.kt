@@ -478,7 +478,6 @@ fun prayerTypeLabel(type: String?) = when (type) {
 }
 
 fun visibilityLabel(visibility: String?) = when (visibility) {
-    "public_named" -> "Công khai tên"
     "private" -> "Riêng tư"
     else -> "Công khai ẩn danh"
 }

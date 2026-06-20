@@ -286,12 +286,15 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _isLoading.value = true
             try {
-                // Fetch profile
+                // Fetch profile — prefer /profile, fall back to /auth/me
                 try {
-                    val profileResponse = apiService.getMe()
-                    if (profileResponse.user != null) {
-                        _currentUser.value = profileResponse.user
-                        sessionManager.saveSession(sessionManager.getAuthToken() ?: "", profileResponse.user)
+                    val profileResponse = runCatching { apiService.getProfile() }
+                        .getOrNull()
+                        ?: apiService.getMe()
+                    val user = profileResponse.authUser
+                    if (user != null) {
+                        _currentUser.value = user
+                        sessionManager.saveSession(sessionManager.getAuthToken() ?: "", user)
                     }
                 } catch (e: Exception) {
                     // Fail gracefully
@@ -611,9 +614,10 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = true
             try {
                 val response = apiService.updateProfile(ProfileUpdateRequest(name, bio))
-                if (response.user != null) {
-                    _currentUser.value = response.user
-                    sessionManager.updateProfile(response.user.name, response.user.bio)
+                val user = response.authUser
+                if (user != null) {
+                    _currentUser.value = user
+                    sessionManager.updateProfile(user.resolvedName, user.bio)
                     _successMessage.value = "Đã cập nhật trang cá nhân!"
                 } else {
                     _errorMessage.value = "Không thể cập nhật hồ sơ"

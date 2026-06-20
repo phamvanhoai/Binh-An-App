@@ -49,7 +49,7 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
     var selectedSubTab by remember { mutableStateOf(0) }
 
     // Forms
-    var editName by remember { mutableStateOf(currentUser?.name ?: "") }
+    var editName by remember { mutableStateOf(currentUser?.resolvedName ?: "") }
     var editBio by remember { mutableStateOf(currentUser?.bio ?: "") }
 
     var oldPassword by remember { mutableStateOf("") }
@@ -69,7 +69,7 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
 
     LaunchedEffect(currentUser) {
         currentUser?.let {
-            editName = it.name ?: ""
+            editName = it.resolvedName ?: ""
             editBio = it.bio ?: ""
         }
     }
@@ -77,7 +77,7 @@ fun ProfileScreen(viewModel: BinhAnViewModel) {
     // Filter my wishes (either generated locally or matching currentUser name/author)
     val myPrayers = remember(prayers, currentUser) {
         prayers.filter {
-            it.user?.id == currentUser?.id || it.id.startsWith("temp_")
+            it.user?.resolvedId == currentUser?.resolvedId || it.id.startsWith("temp_")
         }
     }
 
