@@ -22,9 +22,51 @@ import com.example.ui.screens.*
 import com.example.ui.theme.MyApplicationTheme
 import kotlinx.coroutines.launch
 
+import android.content.pm.PackageManager
+import android.util.Base64
+import android.util.Log
+import java.security.MessageDigest
+
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    
+    // Đoạn code kiểm tra SHA-1 thực tế
+    try {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            val packageInfo = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            val signingInfo = packageInfo.signingInfo
+            if (signingInfo != null) {
+                val signatures = if (signingInfo.hasMultipleSigners()) {
+                    signingInfo.apkContentsSigners
+                } else {
+                    signingInfo.signingCertificateHistory
+                }
+                for (signature in signatures) {
+                    val md = MessageDigest.getInstance("SHA1")
+                    md.update(signature.toByteArray())
+                    val sha1 = md.digest().joinToString(":") { String.format("%02X", it) }
+                    Log.d("BinhAn_SHA1", "MÃ SHA-1 THỰC TẾ CỦA BẠN LÀ: $sha1")
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            val info = packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
+            @Suppress("DEPRECATION")
+            val sigs = info.signatures
+            if (sigs != null) {
+                for (signature in sigs) {
+                    val md = MessageDigest.getInstance("SHA1")
+                    md.update(signature.toByteArray())
+                    val sha1 = md.digest().joinToString(":") { String.format("%02X", it) }
+                    Log.d("BinhAn_SHA1", "MÃ SHA-1 THỰC TẾ CỦA BẠN LÀ: $sha1")
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("BinhAn_SHA1", "Lỗi khi lấy SHA1", e)
+    }
+
     enableEdgeToEdge()
     setContent {
       MyApplicationTheme {

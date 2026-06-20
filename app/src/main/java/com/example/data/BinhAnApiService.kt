@@ -13,6 +13,9 @@ interface BinhAnApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): AuthResponse
 
+    @POST("auth/google")
+    suspend fun loginWithGoogle(@Body request: GoogleLoginRequest): AuthResponse
+
     @GET("auth/me")
     suspend fun getMe(): AuthResponse
 

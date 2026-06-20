@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
+import com.hovait.binhan.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,7 +80,8 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
 
     private fun authErrorMessage(error: Throwable): String {
         if (error !is HttpException) {
-            return "Lỗi kết nối máy chủ: ${error.localizedMessage ?: "Vui lòng thử lại"}"
+            val fallback = getApplication<Application>().getString(R.string.err_connection, "Vui lòng thử lại")
+            return getApplication<Application>().getString(R.string.err_connection, error.localizedMessage ?: fallback)
         }
 
         val serverMessage = runCatching {
@@ -91,8 +93,8 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         }.getOrNull()
 
         return when (serverMessage) {
-            "Invalid login credentials" -> "Email hoặc mật khẩu không đúng."
-            else -> serverMessage ?: "Đăng nhập không thành công (HTTP ${error.code()})."
+            "Invalid login credentials" -> getApplication<Application>().getString(R.string.err_invalid_credentials)
+            else -> serverMessage ?: getApplication<Application>().getString(R.string.err_login_failed, error.code())
         }
     }
 
@@ -106,18 +108,18 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     // Fallback local zen positive message
                     _todayMessage.value = DailyMessage(
                         id = "default",
-                        title = "Nhìn Lại Với Sự Bình Yên",
-                        content = "Mỗi ngày trôi qua là một món quà. Hãy trân trọng hiện tại và gửi lòng biết ơn sâu sắc đến những người thân yêu luôn hiện hữu trong tim ta.",
-                        author = "Bình An",
+                        title = getApplication<Application>().getString(R.string.fallback_msg_title),
+                        content = getApplication<Application>().getString(R.string.fallback_msg_content),
+                        author = getApplication<Application>().getString(R.string.fallback_msg_author),
                         date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                     )
                 }
             } catch (e: Exception) {
                 _todayMessage.value = DailyMessage(
                     id = "default",
-                    title = "An Trú Trong Hiện Tại",
-                    content = "Bình an không phải là một nơi không có giông bão, mà là nơi luôn an yên ở trong tâm hồn.",
-                    author = "Thiền Sư",
+                    title = getApplication<Application>().getString(R.string.fallback_msg_zen_title),
+                    content = getApplication<Application>().getString(R.string.fallback_msg_zen_content),
+                    author = getApplication<Application>().getString(R.string.fallback_msg_zen_author),
                     date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                 )
             }
@@ -136,13 +138,13 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     sessionManager.saveSession(token, user)
                     _currentUser.value = user ?: sessionManager.getUser()
                     _isLoggedIn.value = true
-                    _successMessage.value = "Đăng nhập thành công!"
+                    _successMessage.value = getApplication<Application>().getString(R.string.msg_login_success)
                     refreshUserData()
                     onFinished(true)
                 } else {
                     _errorMessage.value = response.error?.message
                         ?: response.message
-                        ?: "Máy chủ không trả về phiên đăng nhập."
+                        ?: getApplication<Application>().getString(R.string.err_no_session)
                     onFinished(false)
                 }
             } catch (e: Exception) {
@@ -160,9 +162,9 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _errorMessage.value = null
             try {
                 apiService.forgotPassword(email)
-                _successMessage.value = "Đã gửi email khôi phục mật khẩu!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_forgot_pwd_sent)
             } catch (e: Exception) {
-                _successMessage.value = "Hệ thống đã nhận yêu cầu khôi phục mật khẩu!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_forgot_pwd_received)
             } finally {
                 _isLoading.value = false
             }
@@ -181,15 +183,15 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     sessionManager.saveSession(token, user)
                     _currentUser.value = user ?: sessionManager.getUser()
                     _isLoggedIn.value = true
-                    _successMessage.value = "Đăng ký thành công!"
+                    _successMessage.value = getApplication<Application>().getString(R.string.msg_register_success)
                     refreshUserData()
                     onFinished(true)
                 } else {
-                    _errorMessage.value = response.message ?: "Đăng ký không thành công"
+                    _errorMessage.value = response.message ?: getApplication<Application>().getString(R.string.err_register_failed)
                     onFinished(false)
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Lỗi kết nối máy chủ: ${e.localizedMessage}"
+                _errorMessage.value = getApplication<Application>().getString(R.string.err_connection, e.localizedMessage ?: "")
                 onFinished(false)
             } finally {
                 _isLoading.value = false
@@ -197,69 +199,43 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun loginWithGoogle(email: String, displayName: String, onFinished: (Boolean) -> Unit = {}) {
+    fun loginWithGoogle(idToken: String, onFinished: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
-            val googleDummyPassword = "GoogleOAuthBypassSecured!2026"
             try {
-                // First attempt: try to login
-                val loginResponse = apiService.login(LoginRequest(email, googleDummyPassword))
+                android.util.Log.d("BinhAnViewModel", "Logging in with Google ID Token: ${idToken.take(10)}...")
+                val loginResponse = apiService.loginWithGoogle(GoogleLoginRequest(idToken))
                 val token = loginResponse.authToken
                 val user = loginResponse.authUser
                 if (token != null) {
                     sessionManager.saveSession(token, user)
                     _currentUser.value = user ?: sessionManager.getUser()
                     _isLoggedIn.value = true
-                    _successMessage.value = "Đăng nhập bằng tài khoản Google thành công!"
+                    _successMessage.value = getApplication<Application>().getString(R.string.msg_google_login_success)
                     refreshUserData()
                     onFinished(true)
                 } else {
-                    // Try to register since login failed
-                    registerWithGoogle(email, displayName, googleDummyPassword, onFinished)
+                    val serverError = loginResponse.error?.message
+                        ?: loginResponse.message
+                        ?: getApplication<Application>().getString(R.string.err_google_login_no_session)
+                    _errorMessage.value = serverError
+                    android.util.Log.e("BinhAnViewModel", "Google Login Server Error: $serverError")
+                    onFinished(false)
                 }
             } catch (e: Exception) {
-                // If login fails with exception, assume user doesn't exist yet, try registering
-                registerWithGoogle(email, displayName, googleDummyPassword, onFinished)
+                val errorMsg = authErrorMessage(e)
+                _errorMessage.value = errorMsg
+                android.util.Log.e("BinhAnViewModel", "Google Login Exception: ${e.localizedMessage}", e)
+                onFinished(false)
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
-    private suspend fun registerWithGoogle(email: String, displayName: String, secretPass: String, onFinished: (Boolean) -> Unit) {
-        try {
-            val regResponse = apiService.register(RegisterRequest(email, displayName, secretPass))
-            val token = regResponse.authToken
-            val user = regResponse.authUser
-            if (token != null) {
-                sessionManager.saveSession(token, user)
-                _currentUser.value = user ?: sessionManager.getUser()
-                _isLoggedIn.value = true
-                _successMessage.value = "Đăng nhập bằng tài khoản Google thành công!"
-                refreshUserData()
-                onFinished(true)
-            } else {
-                fallbackGoogleOAuthLocal(email, displayName, onFinished)
-            }
-        } catch (e: Exception) {
-            fallbackGoogleOAuthLocal(email, displayName, onFinished)
-        }
-    }
-
-    private fun fallbackGoogleOAuthLocal(email: String, displayName: String, onFinished: (Boolean) -> Unit) {
-        val mockUser = User(
-            id = "google_user_${email.hashCode()}",
-            email = email,
-            name = displayName,
-            avatar = "https://picsum.photos/300/300",
-            bio = "Liên kết tài khoản Google thành công. An nhiên trong chánh niệm."
-        )
-        sessionManager.saveSession("google_mock_token_xyz_2026", mockUser)
-        _currentUser.value = mockUser
-        _isLoggedIn.value = true
-        _successMessage.value = "Đăng nhập bằng tài khoản Google thành công!"
-        onFinished(true)
+    fun showError(message: String) {
+        _errorMessage.value = message
     }
 
     fun logout() {
@@ -277,7 +253,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _gratitudeEntries.value = emptyList()
             _futureLetters.value = emptyList()
             _notifications.value = emptyList()
-            _successMessage.value = "Đã đăng xuất"
+            _successMessage.value = getApplication<Application>().getString(R.string.msg_logout_success)
         }
     }
 
@@ -307,7 +283,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 launch { fetchNotifications() }
 
             } catch (e: Exception) {
-                _errorMessage.value = "Đang xem dữ liệu ở chế độ offline"
+                _errorMessage.value = getApplication<Application>().getString(R.string.msg_offline_mode)
             } finally {
                 _isLoading.value = false
             }
@@ -345,7 +321,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     imageUrl = imageUrl.ifEmpty { "https://picsum.photos/400/300" }
                 )
                 apiService.createMemorial(req)
-                _successMessage.value = "Đã khởi tạo trang tưởng niệm"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_memorial_created)
                 fetchMemorials()
                 onFinished(true)
             } catch (e: Exception) {
@@ -355,7 +331,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     id = tempId, name = name, title = title, description = description, bornDate = born, decessDate = decess, imageUrl = imageUrl.ifEmpty { "https://picsum.photos/400/300" }, candleCount = 1
                 )
                 _memorials.value = listOf(localMemorial) + _memorials.value
-                _successMessage.value = "Đã tạo trang tưởng niệm (Lưu cục bộ)"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_memorial_created_local)
                 onFinished(true)
             } finally {
                 _isLoading.value = false
@@ -369,7 +345,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 val response = apiService.lightCandle(id)
                 val updated = response.data
                 _memorials.value = _memorials.value.map { if (it.id == id) updated else it }
-                _successMessage.value = "🕯️ Bạn đã thắp một ngọn nến bình an!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_candle_lit)
             } catch (e: Exception) {
                 // Simulate local light candle
                 _memorials.value = _memorials.value.map {
@@ -377,7 +353,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                         it.copy(candleCount = (it.candleCount ?: 0) + 1)
                     } else it
                 }
-                _successMessage.value = "🕯️ Đã dâng hương thắp nến cầu chúc bình an!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_candle_lit_local)
             }
         }
     }
@@ -387,10 +363,10 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 apiService.deleteMemorial(id)
                 _memorials.value = _memorials.value.filter { it.id != id }
-                _successMessage.value = "Đã xóa trang tưởng niệm"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_memorial_deleted)
             } catch (e: Exception) {
                 _memorials.value = _memorials.value.filter { it.id != id }
-                _successMessage.value = "Đã xóa trang tưởng niệm"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_memorial_deleted)
             }
         }
     }
@@ -403,7 +379,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 _prayers.value = response.data
             } catch (e: Exception) {
                 _prayers.value = emptyList()
-                _errorMessage.value = "Không thể tải lời bình an từ máy chủ."
+                _errorMessage.value = getApplication<Application>().getString(R.string.err_fetch_prayers_failed)
             }
         }
     }
@@ -424,7 +400,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                         visibility = visibility
                     )
                 )
-                _successMessage.value = "Đã phát lời nguyện ước"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_prayer_created)
                 fetchPrayers()
                 onFinished(true)
             } catch (e: Exception) {
@@ -451,18 +427,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 
                 _prayers.value = _prayers.value.map { if (it.id == id) updated else it }
             } catch (e: Exception) {
-                // Local toggle
-                _prayers.value = _prayers.value.map {
-                    if (it.id == id) {
-                        val currReact = it.isReacted ?: false
-                        val currentCount = it.prayCount ?: 0
-                        it.copy(
-                            isReacted = !currReact,
-                            prayCount = if (currReact) maxOf(0, currentCount - 1) else currentCount + 1
-                        )
-                    } else it
-                }
-                _successMessage.value = "Đã hiệp dâng tâm nguyện thành công!"
+                _errorMessage.value = authErrorMessage(e)
             }
         }
     }
@@ -472,10 +437,10 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 apiService.deletePrayer(id)
                 _prayers.value = _prayers.value.filter { it.id != id }
-                _successMessage.value = "Đã rút lại lời nguyện cầu"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_prayer_deleted)
             } catch (e: Exception) {
                 _prayers.value = _prayers.value.filter { it.id != id }
-                _successMessage.value = "Đã rút lại lời khấn nguyện"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_prayer_deleted_alt)
             }
         }
     }
@@ -502,7 +467,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = true
             try {
                 apiService.createGratitudeEntry(GratitudeCreateRequest(title, content, date))
-                _successMessage.value = "Đã ghi nhận lòng biết ơn"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_gratitude_created)
                 fetchGratitude()
                 onFinished(true)
             } catch (e: Exception) {
@@ -514,7 +479,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     createdAt = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
                 )
                 _gratitudeEntries.value = listOf(localGratitude) + _gratitudeEntries.value
-                _successMessage.value = "Đã lưu cuốn sổ biết ơn (Cục bộ)!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_gratitude_created_local)
                 onFinished(true)
             } finally {
                 _isLoading.value = false
@@ -527,10 +492,10 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 apiService.deleteGratitudeEntry(id)
                 _gratitudeEntries.value = _gratitudeEntries.value.filter { it.id != id }
-                _successMessage.value = "Đã xóa dòng biết ơn"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_gratitude_deleted)
             } catch (e: Exception) {
                 _gratitudeEntries.value = _gratitudeEntries.value.filter { it.id != id }
-                _successMessage.value = "Đã xóa kỷ niệm biết ơn"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_gratitude_deleted_alt)
             }
         }
     }
@@ -557,7 +522,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = true
             try {
                 apiService.createFutureLetter(FutureLetterCreateRequest(title, content, deliverAt))
-                _successMessage.value = "Lá thư tương lai đã được niêm phong khóa thời gian"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_letter_created)
                 fetchFutureLetters()
                 onFinished(true)
             } catch (e: Exception) {
@@ -570,7 +535,7 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                     createdAt = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                 )
                 _futureLetters.value = listOf(localLetter) + _futureLetters.value
-                _successMessage.value = "Lá thư đã được gấp gọn gửi đi tương lai!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_letter_created_local)
                 onFinished(true)
             } finally {
                 _isLoading.value = false
@@ -583,10 +548,10 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 apiService.deleteFutureLetter(id)
                 _futureLetters.value = _futureLetters.value.filter { it.id != id }
-                _successMessage.value = "Đã thu hồi thư"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_letter_deleted)
             } catch (e: Exception) {
                 _futureLetters.value = _futureLetters.value.filter { it.id != id }
-                _successMessage.value = "Đã xóa thư tương lai"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_letter_deleted_alt)
             }
         }
     }
@@ -618,16 +583,16 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
                 if (user != null) {
                     _currentUser.value = user
                     sessionManager.updateProfile(user.resolvedName, user.bio)
-                    _successMessage.value = "Đã cập nhật trang cá nhân!"
+                    _successMessage.value = getApplication<Application>().getString(R.string.msg_profile_updated)
                 } else {
-                    _errorMessage.value = "Không thể cập nhật hồ sơ"
+                    _errorMessage.value = getApplication<Application>().getString(R.string.err_profile_update_failed)
                 }
             } catch (e: Exception) {
                 // Simulate local fallback
                 val updated = currentUser.value?.copy(name = name, bio = bio)
                 _currentUser.value = updated
                 sessionManager.updateProfile(name, bio)
-                _successMessage.value = "Đã chỉnh sửa trang cá nhân (Lưu cục bộ)"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_profile_updated_local)
             } finally {
                 _isLoading.value = false
             }
@@ -639,10 +604,10 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
             _isLoading.value = true
             try {
                 apiService.updatePassword(PasswordUpdateRequest(old, new))
-                _successMessage.value = "Cập nhật mật khẩu bảo mật thành công!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_password_updated)
             } catch (e: Exception) {
                 // local success simulation
-                _successMessage.value = "Chỉnh sửa mật khẩu thành công!"
+                _successMessage.value = getApplication<Application>().getString(R.string.msg_password_updated_local)
             } finally {
                 _isLoading.value = false
             }
@@ -653,13 +618,13 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
     fun saveMessage(id: String) {
         sessionManager.saveMessageId(id)
         _savedMessageIds.value = sessionManager.getSavedMessages()
-        _successMessage.value = "Đã lưu thông điệp hôm nay"
+        _successMessage.value = getApplication<Application>().getString(R.string.msg_message_saved)
     }
 
     fun unsaveMessage(id: String) {
         sessionManager.removeSavedMessageId(id)
         _savedMessageIds.value = sessionManager.getSavedMessages()
-        _successMessage.value = "Đã bỏ lưu thông điệp"
+        _successMessage.value = getApplication<Application>().getString(R.string.msg_message_unsaved)
     }
 
     fun isMessageSaved(id: String): Boolean {
@@ -685,6 +650,6 @@ class BinhAnViewModel(application: Application) : AndroidViewModel(application) 
         val updated = _currentUser.value?.copy(avatar = avatarUrl)
         _currentUser.value = updated
         sessionManager.updateAvatar(avatarUrl)
-        _successMessage.value = "Đã thay đổi pháp danh & ảnh đại diện!"
+        _successMessage.value = getApplication<Application>().getString(R.string.msg_avatar_updated)
     }
 }

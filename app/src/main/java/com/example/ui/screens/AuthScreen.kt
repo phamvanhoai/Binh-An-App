@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,7 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -25,6 +30,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.BinhAnViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.hovait.binhan.BuildConfig
+import com.hovait.binhan.R
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -41,6 +51,33 @@ fun AuthScreen(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
+    val context = LocalContext.current
+    val googleWebClientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        try {
+            val account = task.getResult(ApiException::class.java)
+            val idToken = account.idToken
+            if (idToken.isNullOrBlank()) {
+                viewModel.showError("Không lấy được Google ID token. Hãy kiểm tra GOOGLE_WEB_CLIENT_ID.")
+            } else {
+                viewModel.loginWithGoogle(idToken) { success ->
+                    if (success) onAuthSuccess()
+                }
+            }
+        } catch (e: ApiException) {
+            // Result Code 0 thường đi kèm với Status Code 10 (Developer Error) hoặc 12500
+            val errorDetail = when(e.statusCode) {
+                10 -> "Lỗi 10: Sai SHA-1 hoặc Web Client ID."
+                7 -> "Lỗi 7: Lỗi kết nối mạng."
+                12500 -> "Lỗi 12500: Lỗi cấu hình Google Sign-In."
+                else -> "Mã lỗi: ${e.statusCode}"
+            }
+            viewModel.showError("Đăng nhập Google thất bại: $errorDetail")
+        }
+    }
 
     val gradient = Brush.verticalGradient(
         colors = listOf(
@@ -76,7 +113,7 @@ fun AuthScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Spa,
-                    contentDescription = "Bình An Logo",
+                    contentDescription = stringResource(R.string.auth_logo_desc),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(48.dp)
                 )
@@ -85,7 +122,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "BÌNH AN",
+                text = stringResource(R.string.auth_title),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 4.sp
@@ -95,7 +132,7 @@ fun AuthScreen(
             )
 
             Text(
-                text = "Không gian tưởng niệm, cầu nguyện & tĩnh lặng tâm hồn",
+                text = stringResource(R.string.auth_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary,
                 textAlign = TextAlign.Center,
@@ -122,7 +159,7 @@ fun AuthScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = if (isLoginMode) "Đăng Nhập" else "Đăng Ký Tài Khoản",
+                        text = if (isLoginMode) stringResource(R.string.auth_login_header) else stringResource(R.string.auth_register_header),
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -158,7 +195,7 @@ fun AuthScreen(
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
-                            label = { Text("Họ và tên") },
+                            label = { Text(stringResource(R.string.auth_label_name)) },
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -172,7 +209,7 @@ fun AuthScreen(
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = { Text("Địa chỉ Email") },
+                        label = { Text(stringResource(R.string.auth_label_email)) },
                         leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -186,7 +223,7 @@ fun AuthScreen(
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = { Text("Mật khẩu") },
+                        label = { Text(stringResource(R.string.auth_label_password)) },
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -240,7 +277,7 @@ fun AuthScreen(
                             )
                         } else {
                             Text(
-                                text = if (isLoginMode) "Truy Cập Bình An" else "Khởi Tạo Hành Trình",
+                                text = if (isLoginMode) stringResource(R.string.auth_btn_login) else stringResource(R.string.auth_btn_register),
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -259,7 +296,7 @@ fun AuthScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
                         )
                         Text(
-                            text = "HOẶC",
+                            text = stringResource(R.string.auth_or_divider),
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f),
@@ -274,10 +311,21 @@ fun AuthScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Google Login Button
-                    var showGoogleAccountsDialog by remember { mutableStateOf(false) }
-
                     OutlinedButton(
-                        onClick = { showGoogleAccountsDialog = true },
+                        onClick = {
+                            android.util.Log.d("BinhAn_Auth", "Sử dụng Web Client ID: $googleWebClientId")
+                            if (googleWebClientId.isBlank() || googleWebClientId == "YOUR_GOOGLE_WEB_CLIENT_ID") {
+                                viewModel.showError("Thiếu GOOGLE_WEB_CLIENT_ID trong file .env để đăng nhập Google thật.")
+                            } else {
+                                val signInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                    .requestIdToken(googleWebClientId)
+                                    .requestEmail()
+                                    .build()
+                                val googleSignInClient = GoogleSignIn.getClient(context, signInOptions)
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            }
+                        },
+                        enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp)
@@ -308,167 +356,12 @@ fun AuthScreen(
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                text = "Tiếp tục bằng tài khoản Google",
+                                text = stringResource(R.string.auth_google_login),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = Color(0xFF1F1F1F)
                             )
                         }
-                    }
-
-                    if (showGoogleAccountsDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showGoogleAccountsDialog = false },
-                            properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                            confirmButton = {},
-                            dismissButton = {},
-                            title = null,
-                            text = {
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(24.dp),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        coil.compose.AsyncImage(
-                                            model = "https://lh3.googleusercontent.com/COxitTo2Yg5v-5zp8s14A9QmW876Vyc-SpC0ndC7ZLRth729UPg076UXKOn69H6M=w240",
-                                            contentDescription = "Google Logo",
-                                            modifier = Modifier.size(32.dp).padding(bottom = 8.dp)
-                                        )
-
-                                        Text(
-                                            text = "Đăng nhập bằng Google",
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 18.sp,
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = "để tiếp tục ứng dụng Bình An",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.secondary,
-                                            modifier = Modifier.padding(bottom = 16.dp)
-                                        )
-
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f))
-
-                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                        val userEmail = "phamvanhoai600@gmail.com"
-                                        val userDisplayName = "Phạm Văn Hoài"
-
-                                        Surface(
-                                            onClick = {
-                                                showGoogleAccountsDialog = false
-                                                viewModel.loginWithGoogle(userEmail, userDisplayName) { success ->
-                                                    if (success) {
-                                                        onAuthSuccess()
-                                                    }
-                                                }
-                                            },
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(36.dp)
-                                                        .clip(androidx.compose.foundation.shape.CircleShape)
-                                                        .background(MaterialTheme.colorScheme.primaryContainer),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text(
-                                                        text = "H",
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                                        fontSize = 16.sp
-                                                    )
-                                                }
-
-                                                Spacer(modifier = Modifier.width(12.dp))
-
-                                                Column(modifier = Modifier.weight(1f)) {
-                                                    Text(
-                                                        text = userDisplayName,
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 13.sp,
-                                                        color = MaterialTheme.colorScheme.onSurface
-                                                    )
-                                                    Text(
-                                                        text = userEmail,
-                                                        fontSize = 11.sp,
-                                                        color = MaterialTheme.colorScheme.secondary
-                                                    )
-                                                }
-
-                                                Icon(
-                                                    imageVector = Icons.Default.Check,
-                                                    contentDescription = "Active",
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                        Surface(
-                                            onClick = {
-                                                showGoogleAccountsDialog = false
-                                                viewModel.loginWithGoogle("user.google@gmail.com", "Người Bạn Bình An") { success ->
-                                                    if (success) onAuthSuccess()
-                                                }
-                                            },
-                                            shape = RoundedCornerShape(12.dp),
-                                            color = Color.Transparent,
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .padding(12.dp),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.AddCircleOutline,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.primary,
-                                                    modifier = Modifier.size(24.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(12.dp))
-                                                Text(
-                                                    text = "Sử dụng tài khoản khác",
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = MaterialTheme.colorScheme.primary
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(16.dp))
-
-                                        TextButton(
-                                            onClick = { showGoogleAccountsDialog = false },
-                                            modifier = Modifier.align(Alignment.End)
-                                        ) {
-                                            Text("Hủy bỏ")
-                                        }
-                                    }
-                                }
-                            }
-                        )
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -481,7 +374,7 @@ fun AuthScreen(
                         }
                     ) {
                         Text(
-                            text = if (isLoginMode) "Chưa có tài khoản? Đăng ký ngay" else "Đã có tài khoản? Đăng nhập",
+                            text = if (isLoginMode) stringResource(R.string.auth_no_account) else stringResource(R.string.auth_has_account),
                             color = MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
@@ -500,7 +393,7 @@ fun AuthScreen(
                             }
                         ) {
                             Text(
-                                text = "Dùng tài khoản Demo hoặc Quên mật khẩu?",
+                                text = stringResource(R.string.auth_demo_forgot_pwd),
                                 color = MaterialTheme.colorScheme.secondary,
                                 fontSize = 12.sp
                             )
@@ -512,7 +405,7 @@ fun AuthScreen(
             Spacer(modifier = Modifier.height(48.dp))
 
             Text(
-                text = "Hàng ngàn tâm hồn cùng thắp hương bình an mỗi ngày",
+                text = stringResource(R.string.auth_footer_text),
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center

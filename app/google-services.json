@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "54683366794",
+    "project_id": "binhan-da9bb",
+    "storage_bucket": "binhan-da9bb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:54683366794:android:17f610185ecf002fbd4473",
+        "android_client_info": {
+          "package_name": "com.hovait.binhan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDD38J5CFLAc5zA7yY3zga6US1ODFJwjRc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
